@@ -3,11 +3,8 @@ import os
 from dotenv import load_dotenv
 import utils
 
-# Load API keys silently from .env (developer sets this once)
+# Load environment variables from .env if present
 load_dotenv(override=True)
-utils.TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
-utils.GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-utils.RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 
 # Page Config
 st.set_page_config(page_title="LOOKUPSHA", layout="centered")
@@ -112,15 +109,13 @@ def main():
                         st.error("Email service not configured. Please add your RESEND_API_KEY to the .env file.")
                     elif email:
                         with st.spinner("GENERATING AND SENDING..."):
-                            # 1. Create the PDF
                             pdf_path = utils.generate_pdf(query, result['text'])
-                            # 2. Email it via Resend
-                            success = utils.send_email(email, pdf_path)
+                            success, error_msg = utils.send_email(email, pdf_path)
                             
                             if success:
                                 st.success("SENT ✓ Check your inbox!")
                             else:
-                                st.error("FAILED. Please check your Resend API key status.")
+                                st.error(f"FAILED: {error_msg}")
                     else:
                         st.warning("Please enter a valid email address first.")
 

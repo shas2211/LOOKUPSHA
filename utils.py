@@ -17,12 +17,11 @@ GROQ_API_KEY = get_config("GROQ_API_KEY")
 RESEND_API_KEY = get_config("RESEND_API_KEY")
 
 def search_internet(query, depth):
-    """
-    Orchestrates the entire research flow:
-    1. Fetches real-time web content & images via Tavily.
-    2. Synthesizes an intelligent report via Groq.
-    """
-    if not TAVILY_API_KEY or not GROQ_API_KEY:
+    # Ensure keys are re-read if they were None/empty on import (Streamlit hot-reload behavior)
+    tavily_key = TAVILY_API_KEY or get_config("TAVILY_API_KEY")
+    groq_key = GROQ_API_KEY or get_config("GROQ_API_KEY")
+    
+    if not tavily_key or not groq_key:
         return {
             "text": """
             ### 🛠️ Configuration Required
@@ -40,8 +39,7 @@ def search_internet(query, depth):
         }
 
     # --- 1. RESEARCH PHASE ---
-    # Tavily provides advanced search depth to find high-quality information.
-    tavily = TavilyClient(api_key=TAVILY_API_KEY)
+    tavily = TavilyClient(api_key=tavily_key)
     search_result = tavily.search(query=query, search_depth="advanced" if depth == "DEEP" else "basic", include_images=True)
     
     context = "\n".join([r['content'] for r in search_result['results']])
@@ -52,7 +50,7 @@ def search_internet(query, depth):
 
     # 2. Use Groq (free Llama 3.3) to synthesize the answer
     try:
-        client = Groq(api_key=GROQ_API_KEY)
+        client = Groq(api_key=groq_key)
         prompt = f"""You are LOOKUPSHA, an intelligent research assistant.
 Answer the query: "{query}"
 Depth: {depth}
@@ -120,18 +118,13 @@ def generate_pdf(topic, content):
     return filename
 
 def send_email(to_email, attachment_path):
-    RESEND_API_KEY = os.getenv("RESEND_API_KEY")
-    if not RESEND_API_KEY:
-        # Fallback to module variable set by main.py
-        import utils
-        RESEND_API_KEY = getattr(utils, 'RESEND_API_KEY', None)
-        
-    if not RESEND_API_KEY:
-        return False
+    resend_key = RESEND_API_KEY or get_config("RESEND_API_KEY")
+    if not resend_key:
+        return False, "Deployment: RESEND_API_KEY not found in Secrets."
     
     import resend
     import base64
-    resend.api_key = RESEND_API_KEY
+    resend.api_key = resend_key
     
     with open(attachment_path, "rb") as f:
         pdf_content = base64.b64encode(f.read()).decode()
@@ -151,7 +144,9 @@ def send_email(to_email, attachment_path):
     
     try:
         resend.Emails.send(params)
-        return True
+        return True, "Success"
     except Exception as e:
-        print(f"EMAIL ERROR: {e}")
-        return False
+        error_msg = str(e)
+        if "onboarding" in error_msg.lower() or "verify" in error_msg.lower():
+            return False, "Resend limits: Onboarding mode only allows sending to YOUR registered email."
+        return False, error_msg
