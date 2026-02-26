@@ -96,28 +96,41 @@ def main():
 
             # --- PDF & EMAIL ACTION ---
             st.divider()
-            st.subheader("LIKE THIS? GET THE PDF.")
-            st.write("Enter your email below to receive a professional PDF report of this research.")
+            st.subheader("GET YOUR REPORT")
+            st.write("Download the PDF directly or have it delivered to your inbox via Gmail.")
+
+            # 1. Generate PDF (we do this once so it's ready for both download and email)
+            pdf_path = utils.generate_pdf(query, result['text'])
             
+            # 2. Download Button (Instant gratification)
+            with open(pdf_path, "rb") as f:
+                st.download_button(
+                    label="📥 DOWNLOAD PDF REPORT",
+                    data=f,
+                    file_name=os.path.basename(pdf_path),
+                    mime="application/pdf"
+                )
+
+            st.write("") # Spacing
+
+            # 3. Email Delivery (For later reference)
             col1, col2 = st.columns([3, 1])
             with col1:
-                email = st.text_input("Email", placeholder="your@email.com", key="email_input")
+                email = st.text_input("Email", placeholder="friend@example.com", key="email_input")
             with col2:
-                st.write("") # Social spacing to align button
+                st.write("") # Alignment
                 if st.button("SEND PDF", key="send_button"):
-                    if not utils.RESEND_API_KEY:
-                        st.error("Email service not configured. Please add your RESEND_API_KEY to the .env file.")
+                    if not utils.EMAIL_SENDER or not utils.EMAIL_PASSWORD:
+                        st.error("Gmail not configured. Please add EMAIL_SENDER and EMAIL_PASSWORD to Secrets.")
                     elif email:
-                        with st.spinner("GENERATING AND SENDING..."):
-                            pdf_path = utils.generate_pdf(query, result['text'])
+                        with st.spinner("SENDING VIA GMAIL..."):
                             success, error_msg = utils.send_email(email, pdf_path)
-                            
                             if success:
-                                st.success("SENT ✓ Check your inbox!")
+                                st.success("SENT ✓ Anyone can receive this now!")
                             else:
                                 st.error(f"FAILED: {error_msg}")
                     else:
-                        st.warning("Please enter a valid email address first.")
+                        st.warning("Please enter a valid email address.")
 
 if __name__ == "__main__":
     main()

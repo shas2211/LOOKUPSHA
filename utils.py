@@ -14,7 +14,8 @@ def get_config(key):
 
 TAVILY_API_KEY = get_config("TAVILY_API_KEY")
 GROQ_API_KEY = get_config("GROQ_API_KEY")
-RESEND_API_KEY = get_config("RESEND_API_KEY")
+EMAIL_SENDER = get_config("EMAIL_SENDER")
+EMAIL_PASSWORD = get_config("EMAIL_PASSWORD")
 
 def search_internet(query, depth):
     # Ensure keys are re-read if they were None/empty on import (Streamlit hot-reload behavior)
@@ -32,7 +33,8 @@ def search_internet(query, depth):
             ```toml
             TAVILY_API_KEY = "your-key"
             GROQ_API_KEY = "your-key"
-            RESEND_API_KEY = "your-key"
+            EMAIL_SENDER = "your-gmail@gmail.com"
+            EMAIL_PASSWORD = "your-app-password"
             ```
             """,
             "image": None
@@ -118,35 +120,39 @@ def generate_pdf(topic, content):
     return filename
 
 def send_email(to_email, attachment_path):
-    resend_key = RESEND_API_KEY or get_config("RESEND_API_KEY")
-    if not resend_key:
-        return False, "Deployment: RESEND_API_KEY not found in Secrets."
+    sender = EMAIL_SENDER or get_config("EMAIL_SENDER")
+    password = EMAIL_PASSWORD or get_config("EMAIL_PASSWORD")
     
-    import resend
-    import base64
-    resend.api_key = resend_key
+    if not sender or not password:
+        return False, "Gmail credentials not found in Secrets/Environment."
     
-    with open(attachment_path, "rb") as f:
-        pdf_content = base64.b64encode(f.read()).decode()
-    
-    params = {
-        "from": "LOOKUPSHA <onboarding@resend.dev>",
-        "to": [to_email],
-        "subject": f"LOOKUPSHA: {os.path.basename(attachment_path)}",
-        "html": f"<p>Attached is your research report on <strong>{os.path.basename(attachment_path)}</strong>.</p><p>Sent via LOOKUPSHA.</p>",
-        "attachments": [
-            {
-                "filename": os.path.basename(attachment_path),
-                "content": pdf_content,
-            }
-        ],
-    }
-    
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    from email.mime.base import MIMEBase
+    from email import encoders
+
+    msg = MIMEMultipart()
+    msg['From'] = f"LOOKUPSHA <{sender}>"
+    msg['To'] = to_email
+    msg['Subject'] = f"LOOKUPSHA Report: {os.path.basename(attachment_path)}"
+
+    body = f"Hello,\n\nPlease find attached your research report on {os.path.basename(attachment_path)}.\n\nSent via LOOKUPSHA."
+    msg.attach(MIMEText(body, 'plain'))
+
     try:
-        resend.Emails.send(params)
+        with open(attachment_path, "rb") as attachment:
+            part = MIMEBase('application', 'octet-stream')
+            part.set_payload(attachment.read())
+            encoders.encode_base64(part)
+            part.add_header('Content-Disposition', f"attachment; filename= {os.path.basename(attachment_path)}")
+            msg.attach(part)
+
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(sender, password)
+        server.send_message(msg)
+        server.quit()
         return True, "Success"
     except Exception as e:
-        error_msg = str(e)
-        if "onboarding" in error_msg.lower() or "verify" in error_msg.lower():
-            return False, "Resend limits: Onboarding mode only allows sending to YOUR registered email."
-        return False, error_msg
+        return False, str(e)
