@@ -5,10 +5,13 @@ from reportlab.lib.pagesizes import LETTER
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import inch
 
+import streamlit as st
+
 # --- GLOBAL CONFIGURATION ---
-# These are loaded from the environment. Ensure they are set in your .env file.
-TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+# We look for keys in environment variables (local .env) or Streamlit Secrets (Cloud)
+TAVILY_API_KEY = os.getenv("TAVILY_API_KEY") or (st.secrets["TAVILY_API_KEY"] if "TAVILY_API_KEY" in st.secrets else None)
+GROQ_API_KEY = os.getenv("GROQ_API_KEY") or (st.secrets["GROQ_API_KEY"] if "GROQ_API_KEY" in st.secrets else None)
+RESEND_API_KEY = os.getenv("RESEND_API_KEY") or (st.secrets["RESEND_API_KEY"] if "RESEND_API_KEY" in st.secrets else None)
 
 def search_internet(query, depth):
     """
@@ -18,7 +21,18 @@ def search_internet(query, depth):
     """
     if not TAVILY_API_KEY or not GROQ_API_KEY:
         return {
-            "text": "Configuration missing: Please check your TAVILY_API_KEY and GROQ_API_KEY in the .env file.",
+            "text": """
+            ### 🛠️ Configuration Required
+            It looks like your API keys are missing. 
+            
+            **Local Users:** Check your `.env` file.
+            **Cloud Users:** Add your keys to the **Streamlit Cloud Dashboard** under **Settings > Secrets**:
+            ```toml
+            TAVILY_API_KEY = "your-key"
+            GROQ_API_KEY = "your-key"
+            RESEND_API_KEY = "your-key"
+            ```
+            """,
             "image": None
         }
 
