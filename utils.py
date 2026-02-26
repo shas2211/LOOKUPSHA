@@ -148,11 +148,18 @@ def send_email(to_email, attachment_path):
             part.add_header('Content-Disposition', f"attachment; filename= {os.path.basename(attachment_path)}")
             msg.attach(part)
 
-        server = smtplib.SMTP('smtp.gmail.com', 587)
+        # Connect and Send
+        server = smtplib.SMTP('smtp.gmail.com', 587, timeout=15)
         server.starttls()
-        server.login(sender, password)
+        try:
+            server.login(sender, password)
+        except smtplib.SMTPAuthenticationError:
+            return False, "Authentication Failed: Please check your Gmail App Password and ensure 2FA is on."
+        except Exception as login_err:
+            return False, f"Login Error: {str(login_err)}"
+            
         server.send_message(msg)
         server.quit()
         return True, "Success"
     except Exception as e:
-        return False, str(e)
+        return False, f"Connection/SMTP Error: {str(e)}"
