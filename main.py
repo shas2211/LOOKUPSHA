@@ -120,8 +120,12 @@ def main():
             with col2:
                 st.write("") # Alignment
                 if st.button("SEND PDF", key="send_button"):
-                    if not utils.EMAIL_SENDER or not utils.EMAIL_PASSWORD:
-                        st.error("Gmail not configured. Please add EMAIL_SENDER and EMAIL_PASSWORD to Secrets.")
+                    # Use getattr to avoid 'AttributeError' if the cloud app is still reloading the utils module
+                    sender = getattr(utils, 'EMAIL_SENDER', None)
+                    password = getattr(utils, 'EMAIL_PASSWORD', None)
+
+                    if not sender or not password:
+                        st.error("Email service not initialized. If you just updated your Secrets, please wait 30 seconds and refresh the page.")
                     elif email:
                         with st.spinner("SENDING VIA GMAIL..."):
                             success, error_msg = utils.send_email(email, pdf_path)
