@@ -1,0 +1,6 @@
+streamlit
+tavily-python
+groq
+reportlab
+python-dotenv
+resend
