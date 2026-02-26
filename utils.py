@@ -9,9 +9,12 @@ import streamlit as st
 
 # --- GLOBAL CONFIGURATION ---
 # We look for keys in environment variables (local .env) or Streamlit Secrets (Cloud)
-TAVILY_API_KEY = os.getenv("TAVILY_API_KEY") or (st.secrets["TAVILY_API_KEY"] if "TAVILY_API_KEY" in st.secrets else None)
-GROQ_API_KEY = os.getenv("GROQ_API_KEY") or (st.secrets["GROQ_API_KEY"] if "GROQ_API_KEY" in st.secrets else None)
-RESEND_API_KEY = os.getenv("RESEND_API_KEY") or (st.secrets["RESEND_API_KEY"] if "RESEND_API_KEY" in st.secrets else None)
+def get_config(key):
+    return os.getenv(key) or st.secrets.get(key)
+
+TAVILY_API_KEY = get_config("TAVILY_API_KEY")
+GROQ_API_KEY = get_config("GROQ_API_KEY")
+RESEND_API_KEY = get_config("RESEND_API_KEY")
 
 def search_internet(query, depth):
     """
