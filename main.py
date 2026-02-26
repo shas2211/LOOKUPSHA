@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import utils
 
 # Load environment variables from .env if present
+# Forced update: 2026-02-27 00:46
 load_dotenv(override=True)
 
 # Page Config
